@@ -4,8 +4,10 @@ import os
 
 class GslConan(ConanFile):
     name = "gsl"
-    license = "GNU GPL"
-    url = "http://www.gnu.org/software/gsl/"
+    license = "GPL-3.0-or-later"
+    url = "https://github.com/conan-io/conan-center-index"
+    topics = ("numerical", "math", "random", "scientific")
+    homepage = "http://www.gnu.org/software/gsl/"
     description = "GNU Scientific Library"
     settings = "os", "compiler", "build_type", "arch"
     options = {"shared": [True, False], "fPIC": [True, False]}
