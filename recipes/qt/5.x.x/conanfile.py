@@ -294,6 +294,8 @@ class QtConan(ConanFile):
             self.requires("openssl/1.1.1k")
         if self.options.with_pcre2:
             self.requires("pcre2/10.37")
+        if self.options.get_safe("with_vulkan"):
+            self.requires("vulkan-loader/1.2.172")
 
         if self.options.with_glib:
             self.requires("glib/2.68.3")
@@ -800,6 +802,9 @@ Examples = bin/datadir/examples""")
             core_reqs.append("glib::glib-2.0")
 
         _create_module("Core", core_reqs)
+        if self.settings.compiler == "Visual Studio":
+            self.cpp_info.components["qtCore"].exelinkflags.append("-ENTRY:mainCRTStartup")
+
         if self.options.gui:
             gui_reqs = ["DBus"]
             if self.options.with_freetype:
@@ -882,8 +887,6 @@ Examples = bin/datadir/examples""")
 
         if self.options.qtsvg and self.options.gui:
             _create_module("Svg", ["Gui"])
-            if self.options.widgets:
-                _create_module("SvgWidgets", ["Gui", "Svg", "Widgets"])
 
         if self.options.qtwayland and self.options.gui:
             _create_module("WaylandClient", ["Gui", "wayland::wayland-client"])
@@ -973,7 +976,7 @@ Examples = bin/datadir/examples""")
 
         if self.options.qtmultimedia:
             multimedia_reqs = ["Network", "Gui"]
-            if self.options.with_libalsa:
+            if self.options.get_safe("with_libalsa", False):
                 multimedia_reqs.append("libalsa::libalsa")
             if self.options.with_openal:
                 multimedia_reqs.append("openal::openal")
@@ -1011,9 +1014,18 @@ Examples = bin/datadir/examples""")
 
         if self.options.qtnetworkauth:
             _create_module("NetworkAuth", ["Network"])
+            
+        if self.settings.os != "Windows":
+            self.cpp_info.components["qtCore"].cxxflags.append("-fPIC")
 
         if self.options.get_safe("qtx11extras"):
             _create_module("X11Extras")
+
+        if self.options.qtremoteobjects:
+            _create_module("RemoteObjects")
+        
+        if self.options.qtwinextras:
+            _create_module("WinExtras")
 
         if not self.options.shared:
             if self.settings.os == "Windows":
@@ -1022,12 +1034,15 @@ Examples = bin/datadir/examples""")
                 self.cpp_info.components["qtCore"].system_libs.append("netapi32") # qtcore requires "NetApiBufferFree" which is in "Netapi32.lib" library
                 self.cpp_info.components["qtCore"].system_libs.append("userenv")  # qtcore requires "__imp_GetUserProfileDirectoryW " which is in "UserEnv.Lib" library
                 self.cpp_info.components["qtCore"].system_libs.append("ws2_32")  # qtcore requires "WSAStartup " which is in "Ws2_32.Lib" library
-                self.cpp_info.components["qtNetwork"].system_libs.append("DnsApi")  # qtnetwork from qtbase requires "DnsFree" which is in "Dnsapi.lib" library
+                self.cpp_info.components["qtNetwork"].system_libs.append("dnsapi")  # qtnetwork from qtbase requires "DnsFree" which is in "Dnsapi.lib" library
+                self.cpp_info.components["qtNetwork"].system_libs.append("iphlpapi")
 
             if self.settings.os == "Macos":
                 self.cpp_info.components["qtCore"].frameworks.append("IOKit")     # qtcore requires "_IORegistryEntryCreateCFProperty", "_IOServiceGetMatchingService" and much more which are in "IOKit" framework
                 self.cpp_info.components["qtCore"].frameworks.append("Cocoa")     # qtcore requires "_OBJC_CLASS_$_NSApplication" and more, which are in "Cocoa" framework
                 self.cpp_info.components["qtCore"].frameworks.append("Security")  # qtcore requires "_SecRequirementCreateWithString" and more, which are in "Security" framework
+                self.cpp_info.components["qtNetwork"].frameworks.append("SystemConfiguration")
+                self.cpp_info.components["qtNetwork"].frameworks.append("GSS")
 
         self.cpp_info.components["qtCore"].builddirs.append(os.path.join("bin","archdatadir","bin"))
         self.cpp_info.components["qtCore"].build_modules["cmake_find_package"].append(self._cmake_executables_file)
